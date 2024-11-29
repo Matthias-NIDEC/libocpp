@@ -12,6 +12,7 @@
 #include <ocpp/v201/messages/GetDisplayMessages.hpp>
 #include <ocpp/v201/messages/GetLog.hpp>
 #include <ocpp/v201/messages/RequestStartTransaction.hpp>
+#include <ocpp/v201/messages/ReserveNow.hpp>
 #include <ocpp/v201/messages/SetDisplayMessage.hpp>
 #include <ocpp/v201/messages/TransactionEvent.hpp>
 #include <ocpp/v201/messages/UnlockConnector.hpp>
@@ -19,6 +20,14 @@
 
 namespace ocpp::v201 {
 struct Callbacks {
+    /// @addtogroup ocpp201_callbacks OCPP 2.0.1 callbacks
+    /// Callbacks will call be called when necessary and must be implemented by the calling class.
+    /// @{
+
+    /// @name Callbacks
+    /// Callbacks
+    /// @{
+
     /// \brief Function to check if the callback struct is completely filled. All std::functions should hold a function,
     ///       all std::optional<std::functions> should either be empty or hold a function.
     /// \param device_model The device model, to check if certain modules are enabled / available.
@@ -70,13 +79,13 @@ struct Callbacks {
     std::function<RequestStartStopStatusEnum(const RequestStartTransactionRequest& request,
                                              const bool authorize_remote_start)>
         remote_start_transaction_callback;
+
     ///
     /// \brief Check if the current reservation for the given evse id is made for the id token / group id token.
-    /// \return True if evse is reserved for the given id token / group id token, false if it is reserved for another
-    ///         one.
+    /// \return The reservation check status of this evse / id token.
     ///
-    std::function<bool(const int32_t evse_id, const CiString<36> idToken,
-                       const std::optional<CiString<36>> groupIdToken)>
+    std::function<ocpp::ReservationCheckStatus(const int32_t evse_id, const CiString<36> idToken,
+                                               const std::optional<CiString<36>> groupIdToken)>
         is_reservation_for_token_callback;
     std::function<UpdateFirmwareResponse(const UpdateFirmwareRequest& request)> update_firmware_request_callback;
     // callback to be called when a variable has been changed by the CSMS
@@ -151,5 +160,14 @@ struct Callbacks {
     std::optional<std::function<void(const RunningCost& running_cost, const uint32_t number_of_decimals,
                                      std::optional<std::string> currency_code)>>
         set_running_cost_callback;
+
+    /// \brief Callback function is called when a reservation request is received from the CSMS
+    std::optional<std::function<ReserveNowStatusEnum(const ReserveNowRequest& request)>> reserve_now_callback;
+    /// \brief Callback function is called when a cancel reservation request is received from the CSMS
+    std::optional<std::function<bool(const int32_t reservationId)>> cancel_reservation_callback;
+
+    /// @} // End ocpp 201 callbacks group / topic
+
+    /// @} // End group
 };
 } // namespace ocpp::v201

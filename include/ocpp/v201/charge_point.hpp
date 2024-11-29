@@ -7,6 +7,9 @@
 #include <memory>
 #include <set>
 
+#include <ocpp/common/message_dispatcher.hpp>
+#include <ocpp/v201/functional_blocks/data_transfer.hpp>
+
 #include <ocpp/common/charging_station_base.hpp>
 
 #include <ocpp/v201/average_meter_values.hpp>
@@ -14,7 +17,7 @@
 #include <ocpp/v201/ctrlr_component_variables.hpp>
 #include <ocpp/v201/database_handler.hpp>
 #include <ocpp/v201/device_model.hpp>
-#include <ocpp/v201/device_model_storage.hpp>
+#include <ocpp/v201/device_model_storage_interface.hpp>
 #include <ocpp/v201/evse_manager.hpp>
 #include <ocpp/v201/monitoring_updater.hpp>
 #include <ocpp/v201/ocpp_enums.hpp>
@@ -27,6 +30,7 @@
 #include "ocpp/v201/messages/Get15118EVCertificate.hpp"
 #include <ocpp/v201/messages/Authorize.hpp>
 #include <ocpp/v201/messages/BootNotification.hpp>
+#include <ocpp/v201/messages/CancelReservation.hpp>
 #include <ocpp/v201/messages/CertificateSigned.hpp>
 #include <ocpp/v201/messages/ChangeAvailability.hpp>
 #include <ocpp/v201/messages/ClearCache.hpp>
@@ -58,6 +62,7 @@
 #include <ocpp/v201/messages/ReportChargingProfiles.hpp>
 #include <ocpp/v201/messages/RequestStartTransaction.hpp>
 #include <ocpp/v201/messages/RequestStopTransaction.hpp>
+#include <ocpp/v201/messages/ReserveNow.hpp>
 #include <ocpp/v201/messages/Reset.hpp>
 #include <ocpp/v201/messages/SecurityEventNotification.hpp>
 #include <ocpp/v201/messages/SendLocalList.hpp>
@@ -107,6 +112,14 @@ public:
 
     /// \brief Disconnects the the websocket connection to the CSMS if it is connected
     virtual void disconnect_websocket() = 0;
+
+    /// \addtogroup ocpp201_handlers OCPP 2.0.1 handlers
+    /// Handlers that can be called from the implementing class
+    /// @{
+
+    /// @name Handlers
+    /// The handlers
+    /// @{
 
     ///
     /// \brief Can be called when a network is disconnected, for example when an ethernet cable is removed.
@@ -222,6 +235,11 @@ public:
     /// \param connector_id     Reserved connector id
     virtual void on_reserved(const int32_t evse_id, const int32_t connector_id) = 0;
 
+    /// \brief Event handler that should be called when the reservation of the connector is cleared.
+    /// \param evse_id          Cleared EVSE id
+    /// \param connector_id     Cleared connector id.
+    virtual void on_reservation_cleared(const int32_t evse_id, const int32_t connector_id) = 0;
+
     /// \brief Event handler that will update the charging state internally when it has been changed.
     /// \param evse_id          The evse id of which the charging state has changed.
     /// \param charging_state   The new charging state.
@@ -230,19 +248,6 @@ public:
     virtual bool
     on_charging_state_changed(const uint32_t evse_id, const ChargingStateEnum charging_state,
                               const TriggerReasonEnum trigger_reason = TriggerReasonEnum::ChargingStateChanged) = 0;
-
-    /// \brief Gets the transaction id for a certain \p evse_id if there is an active transaction
-    /// \param evse_id The evse to tet the transaction for
-    /// \return The transaction id if a transaction is active, otherwise nullopt
-    virtual std::optional<std::string> get_evse_transaction_id(int32_t evse_id) = 0;
-
-    /// \brief Validates provided \p id_token \p certificate and \p ocsp_request_data using CSMS, AuthCache or AuthList
-    /// \param id_token
-    /// \param certificate
-    /// \param ocsp_request_data
-    /// \return AuthorizeResponse containing the result of the validation
-    virtual AuthorizeResponse validate_token(const IdToken id_token, const std::optional<CiString<5500>>& certificate,
-                                             const std::optional<std::vector<OCSPRequestData>>& ocsp_request_data) = 0;
 
     /// \brief Event handler that can be called to trigger a NotifyEvent.req with the given \p events
     /// \param events
@@ -275,6 +280,28 @@ public:
     /// \param set_variable_data contains data of the variable to set
     ///
     virtual void on_variable_changed(const SetVariableData& set_variable_data) = 0;
+
+    /// \brief Event handler that will send a ReservationStatusUpdate request.
+    /// \param reservation_id   The reservation id.
+    /// \param status           The status.
+    virtual void on_reservation_status(const int32_t reservation_id, const ReservationUpdateStatusEnum status) = 0;
+
+    /// @}  // End handlers group
+
+    /// @}
+
+    /// \brief Gets the transaction id for a certain \p evse_id if there is an active transaction
+    /// \param evse_id The evse to tet the transaction for
+    /// \return The transaction id if a transaction is active, otherwise nullopt
+    virtual std::optional<std::string> get_evse_transaction_id(int32_t evse_id) = 0;
+
+    /// \brief Validates provided \p id_token \p certificate and \p ocsp_request_data using CSMS, AuthCache or AuthList
+    /// \param id_token
+    /// \param certificate
+    /// \param ocsp_request_data
+    /// \return AuthorizeResponse containing the result of the validation
+    virtual AuthorizeResponse validate_token(const IdToken id_token, const std::optional<CiString<5500>>& certificate,
+                                             const std::optional<std::vector<OCSPRequestData>>& ocsp_request_data) = 0;
 
     /// \brief Data transfer mechanism initiated by charger
     /// \param vendorId
@@ -373,6 +400,9 @@ private:
     std::unique_ptr<EvseManager> evse_manager;
     std::unique_ptr<ConnectivityManager> connectivity_manager;
 
+    std::unique_ptr<MessageDispatcherInterface<MessageType>> message_dispatcher;
+    std::unique_ptr<DataTransferInterface> data_transfer;
+
     // utility
     std::shared_ptr<MessageQueue<v201::MessageType>> message_queue;
     std::shared_ptr<DatabaseHandler> database_handler;
@@ -401,7 +431,7 @@ private:
     std::atomic_bool stop_auth_cache_cleanup_handler;
 
     // states
-    RegistrationStatusEnum registration_status;
+    std::atomic<RegistrationStatusEnum> registration_status;
     FirmwareStatusEnum firmware_status;
     // The request ID in the last firmware update status received
     std::optional<int32_t> firmware_status_id;
@@ -452,8 +482,6 @@ private:
 
     /// \brief optional delay to resumption of message queue after reconnecting to the CSMS
     std::chrono::seconds message_queue_resume_delay = std::chrono::seconds(0);
-
-    bool send(CallError call_error);
 
     // internal helper functions
     void initialize(const std::map<int32_t, int32_t>& evse_connector_structure, const std::string& message_log_path);
@@ -542,16 +570,10 @@ private:
     /// \param evse             The evse id that must be checked. Reservation will be checked for all connectors.
     /// \param id_token         The id token to check if it is reserved for that token.
     /// \param group_id_token   The group id token to check if it is reserved for that group id.
-    /// \return True when one of the EVSE connectors is reserved for another id token or group id token than the given
-    ///         tokens.
-    ///         If id_token is different than reserved id_token, but group_id_token is equal to reserved group_id_token,
-    ///         returns true.
-    ///         If both are different, returns true.
-    ///         If id_token is equal to reserved id_token or group_id_token is equal, return false.
-    ///         If there is no reservation, return false.
+    /// \return The status of the reservation for this evse, id token and group id token.
     ///
-    bool is_evse_reserved_for_other(EvseInterface& evse, const IdToken& id_token,
-                                    const std::optional<IdToken>& group_id_token) const;
+    ReservationCheckStatus is_evse_reserved_for_other(EvseInterface& evse, const IdToken& id_token,
+                                                      const std::optional<IdToken>& group_id_token) const;
 
     ///
     /// \brief Check if one of the connectors of the evse is available (both connectors faulted or unavailable or on of
@@ -568,6 +590,22 @@ private:
     ///                 connector if it was already set to true and if that is the case, it will be persisted anyway.
     ///
     void set_evse_connectors_unavailable(EvseInterface& evse, bool persist);
+
+    ///
+    /// \brief Check if there is a connector available with the given connector type.
+    /// \param evse_id          The evse to check for.
+    /// \param connector_type   The connector type.
+    /// \return True when a connector is available and the evse id exists.
+    ///
+    bool is_connector_available(const uint32_t evse_id, std::optional<ConnectorEnum> connector_type);
+
+    ///
+    /// \brief Check if the connector exists on the given evse id.
+    /// \param evse_id          The evse id to check for.
+    /// \param connector_type   The connector type.
+    /// \return False if evse id does not exist or evse does not have the given connector type.
+    ///
+    bool does_connector_exist(const uint32_t evse_id, std::optional<ConnectorEnum> connector_type);
 
     /// \brief Get the value optional offline flag
     /// \return true if the charge point is offline. std::nullopt if it is online;
@@ -713,6 +751,11 @@ private:
     void handle_change_availability_req(Call<ChangeAvailabilityRequest> call);
     void handle_heartbeat_response(CallResult<HeartbeatResponse> call);
 
+    // Function Block H: Reservations
+    void handle_reserve_now_request(Call<ReserveNowRequest> call);
+    void handle_cancel_reservation_callback(Call<CancelReservationRequest> call);
+    void send_reserve_now_rejected_response(const MessageId& unique_id, const std::string& status_info);
+
     // Functional Block I: TariffAndCost
     void handle_costupdated_req(const Call<CostUpdatedRequest> call);
 
@@ -745,23 +788,12 @@ private:
     void handle_set_display_message(Call<SetDisplayMessageRequest> call);
     void handle_clear_display_message(Call<ClearDisplayMessageRequest> call);
 
-    // Functional Block P: DataTransfer
-    void handle_data_transfer_req(Call<DataTransferRequest> call);
-
-    // general message handling
-    template <class T> bool send(ocpp::Call<T> call, const bool initiated_by_trigger_message = false);
-
-    template <class T> std::future<EnhancedMessage<v201::MessageType>> send_async(ocpp::Call<T> call);
-
-    template <class T> bool send(ocpp::CallResult<T> call_result);
-
     // Generates async sending callbacks
     template <class RequestType, class ResponseType>
     std::function<ResponseType(RequestType)> send_callback(MessageType expected_response_message_type) {
         return [this, expected_response_message_type](auto request) {
-            MessageId message_id = MessageId(to_string(this->uuid_generator()));
             const auto enhanced_response =
-                this->send_async<RequestType>(ocpp::Call<RequestType>(request, message_id)).get();
+                this->message_dispatcher->dispatch_call_async(ocpp::Call<RequestType>(request)).get();
             if (enhanced_response.messageType != expected_response_message_type) {
                 throw UnexpectedMessageTypeFromCSMS(
                     std::string("Got unexpected message type from CSMS, expected: ") +
@@ -782,6 +814,11 @@ private:
     /// If \param persist is set to true, the change will be persisted across a reboot
     void execute_change_availability_request(ChangeAvailabilityRequest request, bool persist);
 
+    /// \brief Helper function to determine if a certificate installation should be allowed
+    /// \param cert_type is the certificate type to be checked
+    /// \return true if it should be allowed
+    bool should_allow_certificate_install(InstallCertificateUseEnum cert_type) const;
+
 protected:
     std::shared_ptr<SmartChargingHandlerInterface> smart_charging_handler;
 
@@ -789,6 +826,12 @@ protected:
     void clear_invalid_charging_profiles();
 
 public:
+    /// \addtogroup chargepoint_constructors
+    /// @{
+
+    /// @name Constructors for 2.0.1
+    /// @{
+
     /// \brief Construct a new ChargePoint object
     /// \param evse_connector_structure Map that defines the structure of EVSE and connectors of the chargepoint. The
     /// key represents the id of the EVSE and the value represents the number of connectors for this EVSE. The ids of
@@ -808,17 +851,17 @@ public:
     /// \param evse_connector_structure Map that defines the structure of EVSE and connectors of the chargepoint. The
     /// key represents the id of the EVSE and the value represents the number of connectors for this EVSE. The ids of
     /// the EVSEs have to increment starting with 1.
-    /// \param device_model_storage device model storage instance
+    /// \param device_model_storage_interface device model interface instance
     /// \param ocpp_main_path Path where utility files for OCPP are read and written to
     /// \param core_database_path Path to directory where core database is located
     /// \param message_log_path Path to where logfiles are written to
     /// \param evse_security Pointer to evse_security that manages security related operations
     /// \param callbacks Callbacks that will be registered for ChargePoint
     ChargePoint(const std::map<int32_t, int32_t>& evse_connector_structure,
-                std::unique_ptr<DeviceModelStorage> device_model_storage, const std::string& ocpp_main_path,
-                const std::string& core_database_path, const std::string& sql_init_path,
-                const std::string& message_log_path, const std::shared_ptr<EvseSecurity> evse_security,
-                const Callbacks& callbacks);
+                std::unique_ptr<DeviceModelStorageInterface> device_model_storage_interface,
+                const std::string& ocpp_main_path, const std::string& core_database_path,
+                const std::string& sql_init_path, const std::string& message_log_path,
+                const std::shared_ptr<EvseSecurity> evse_security, const Callbacks& callbacks);
 
     /// \brief Construct a new ChargePoint object
     /// \param evse_connector_structure Map that defines the structure of EVSE and connectors of the chargepoint. The
@@ -840,6 +883,10 @@ public:
                 const std::string& ocpp_main_path, const std::string& core_database_path,
                 const std::string& sql_init_path, const std::string& message_log_path,
                 const std::shared_ptr<EvseSecurity> evse_security, const Callbacks& callbacks);
+
+    /// @}  // End chargepoint 2.0.1 member group
+
+    /// @}  // End chargepoint 2.0.1 topic
 
     ~ChargePoint();
 
@@ -894,6 +941,8 @@ public:
 
     void on_reserved(const int32_t evse_id, const int32_t connector_id) override;
 
+    void on_reservation_cleared(const int32_t evse_id, const int32_t connector_id) override;
+
     bool on_charging_state_changed(
         const uint32_t evse_id, const ChargingStateEnum charging_state,
         const TriggerReasonEnum trigger_reason = TriggerReasonEnum::ChargingStateChanged) override;
@@ -912,6 +961,8 @@ public:
                            const std::optional<DateTime>& timestamp = std::nullopt) override;
 
     void on_variable_changed(const SetVariableData& set_variable_data) override;
+
+    void on_reservation_status(const int32_t reservation_id, const ReservationUpdateStatusEnum status) override;
 
     std::optional<DataTransferResponse> data_transfer_req(const CiString<255>& vendorId,
                                                           const std::optional<CiString<50>>& messageId,

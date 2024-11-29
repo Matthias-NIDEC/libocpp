@@ -16,6 +16,7 @@
 
 #include <ocpp/common/aligned_timer.hpp>
 #include <ocpp/common/charging_station_base.hpp>
+#include <ocpp/common/message_dispatcher.hpp>
 #include <ocpp/common/message_queue.hpp>
 #include <ocpp/common/schemas.hpp>
 #include <ocpp/common/types.hpp>
@@ -23,6 +24,7 @@
 #include <ocpp/v16/charge_point_configuration.hpp>
 #include <ocpp/v16/connector.hpp>
 #include <ocpp/v16/database_handler.hpp>
+#include <ocpp/v16/message_dispatcher.hpp>
 #include <ocpp/v16/messages/Authorize.hpp>
 #include <ocpp/v16/messages/BootNotification.hpp>
 #include <ocpp/v16/messages/CancelReservation.hpp>
@@ -87,7 +89,7 @@ private:
     BootReasonEnum bootreason;
     ChargePointConnectionState connection_state;
     bool boot_notification_callerror;
-    RegistrationStatus registration_status;
+    std::atomic<RegistrationStatus> registration_status;
     DiagnosticsStatus diagnostics_status;
     FirmwareStatus firmware_status;
     bool firmware_update_is_pending = false;
@@ -95,6 +97,7 @@ private:
     std::string message_log_path;
 
     std::unique_ptr<Websocket> websocket;
+    std::unique_ptr<ocpp::MessageDispatcherInterface<MessageType>> message_dispatcher;
     Everest::SteadyTimer websocket_timer;
     std::unique_ptr<MessageQueue<v16::MessageType>> message_queue;
     std::map<int32_t, std::shared_ptr<Connector>> connectors;
@@ -184,7 +187,8 @@ private:
         transaction_updated_callback;
     std::function<void(const int32_t connector, const std::string& session_id, const int32_t transaction_id)>
         transaction_stopped_callback;
-    std::function<bool(const int32_t connector, const std::string& id_token)> is_token_reserved_for_connector_callback;
+    std::function<ocpp::ReservationCheckStatus(const int32_t connector, const std::string& id_token)>
+        is_token_reserved_for_connector_callback;
 
     // iso15118 callback
     std::function<void(const int32_t connector, const ocpp::v201::Get15118EVCertificateResponse& certificate_response,
@@ -205,11 +209,6 @@ private:
     std::unique_ptr<ocpp::MessageQueue<v16::MessageType>> create_message_queue();
     void message_callback(const std::string& message);
     void handle_message(const EnhancedMessage<v16::MessageType>& message);
-    template <class T> bool send(Call<T> call, bool initiated_by_trigger_message = false);
-    template <class T>
-    std::future<EnhancedMessage<v16::MessageType>> send_async(Call<T> call, bool initiated_by_trigger_message = false);
-    template <class T> bool send(CallResult<T> call_result);
-    bool send(CallError call_error);
     void heartbeat(bool initiated_by_trigger_message = false);
     void boot_notification(bool initiated_by_trigger_message = false);
     void clock_aligned_meter_values_sample();
@@ -867,7 +866,7 @@ public:
     /// received.
     /// \param callback
     void register_is_token_reserved_for_connector_callback(
-        const std::function<bool(const int32_t connector, const std::string& id_token)>& callback);
+        const std::function<ReservationCheckStatus(const int32_t connector, const std::string& id_token)>& callback);
 
     void register_session_cost_callback(
         const std::function<DataTransferResponse(const RunningCost& running_cost, const uint32_t number_of_decimals)>&

@@ -6,14 +6,14 @@
 
 namespace ocpp {
 ChargingStationBase::ChargingStationBase(const std::shared_ptr<EvseSecurity> evse_security,
-                                         const std::optional<SecurityConfiguration> security_configuration) :
-    uuid_generator(boost::uuids::random_generator()) {
+                                         const std::optional<SecurityConfiguration> security_configuration) {
+
     if (evse_security != nullptr) {
         this->evse_security = evse_security;
     } else {
         if (!security_configuration.has_value()) {
-            throw std::runtime_error("No implementation of ESecurit 111222 nterface and no SecurityConfiguration "
-        	                         "provided to chargepoint constructor. One of options must be set");
+            throw std::runtime_error("No implementation of EvseSecurity interface and no SecurityConfiguration "
+                                     "provided to chargepoint constructor. One of options must be set");
         }
         this->evse_security = std::make_shared<EvseSecurityImpl>(security_configuration.value());
     }
@@ -25,12 +25,6 @@ ChargingStationBase::~ChargingStationBase() {
     work->get_io_context().stop();
     io_service.stop();
     io_service_thread.join();
-}
-
-std::string ChargingStationBase::uuid() {
-    std::stringstream s;
-    s << this->uuid_generator();
-    return s.str();
 }
 
 } // namespace ocpp

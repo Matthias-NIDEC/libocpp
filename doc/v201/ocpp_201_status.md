@@ -1,3 +1,5 @@
+# OCPP2.0.1 Functional Requirements Status
+
 This document contains the status of which OCPP 2.0.1 numbered functional requirements (FRs) have been implemented in `libocpp`. This does not cover if the functionality is also implemented in `everest-core`.
 
 ## Legend
@@ -812,16 +814,11 @@ This document contains the status of which OCPP 2.0.1 numbered functional requir
 | E09.FR.06 | ✅     |                                                                |
 | E09.FR.07 | ✅     |                                                                |
 
-## Transactions -  When cable disconnected on EV-side: Suspend Transaction
+## Transactions - When cable disconnected on EV-side: Suspend Transaction
 
 | ID        | Status | Remark |
 |-----------|--------|--------|
 | E10.FR.01 |        |        |
-
-## Transactions - When cable disconnected on EV-side: Stop Transaction
-
-| ID        | Status | Remark |
-|-----------|--------|--------|
 | E10.FR.02 | ✅     |        |
 | E10.FR.03 | ✅     |        |
 | E10.FR.04 | ✅     |        |
@@ -1074,21 +1071,21 @@ This document contains the status of which OCPP 2.0.1 numbered functional requir
 
 | ID        | Status | Remark |
 |-----------|--------|--------|
-| H01.FR.01 |        |        |
-| H01.FR.02 |        |        |
-| H01.FR.03 |        |        |
-| H01.FR.04 |        |        |
-| H01.FR.06 |        |        |
-| H01.FR.07 |        |        |
-| H01.FR.09 |        |        |
-| H01.FR.11 |        |        |
-| H01.FR.12 |        |        |
-| H01.FR.14 |        |        |
-| H01.FR.15 |        |        |
-| H01.FR.16 |        |        |
-| H01.FR.17 |        |        |
-| H01.FR.18 |        |        |
-| H01.FR.19 |        |        |
+| H01.FR.01 | ✅      |        |
+| H01.FR.02 | ✅      |        |
+| H01.FR.03 | ✅      |        |
+| H01.FR.04 | ✅      |        |
+| H01.FR.06 | ✅      |        |
+| H01.FR.07 | ✅      |        |
+| H01.FR.09 | ✅      |        |
+| H01.FR.11 | ✅      |        |
+| H01.FR.12 | ✅      |        |
+| H01.FR.14 | ✅      |        |
+| H01.FR.15 | ✅      |        |
+| H01.FR.16 | ✅      |        |
+| H01.FR.17 | ✅      |        |
+| H01.FR.18 | ✅      |        |
+| H01.FR.19 | ✅      |        |
 | H01.FR.20 |        |        |
 | H01.FR.23 |        |        |
 | H01.FR.24 |        |        |
@@ -1097,29 +1094,31 @@ This document contains the status of which OCPP 2.0.1 numbered functional requir
 
 | ID        | Status | Remark |
 |-----------|--------|--------|
-| H02.FR.01 |        |        |
-| H02.FR.02 |        |        |
+| H02.FR.01 | ✅      |        |
+| H02.FR.02 | ✅      |        |
 
 ## Reservation - Use a reserved EVSE
 
 | ID        | Status | Remark |
 |-----------|--------|--------|
-| H03.FR.01 |        |        |
-| H03.FR.02 |        |        |
-| H03.FR.03 |        |        |
-| H03.FR.04 |        |        |
-| H03.FR.05 |        |        |
-| H03.FR.06 |        |        |
-| H03.FR.07 |        |        |
-| H03.FR.08 |        |        |
+| H03.FR.01 | ✅      |        |
+| H03.FR.02 | ✅      |        |
+| H03.FR.03 | ✅      |        |
+| H03.FR.04 | ✅      |        |
+| H03.FR.05 | ✅      |        |
+| H03.FR.06 | ✅      |        |
+| H03.FR.07 | ⛽️      |        |
+| H03.FR.08 | ⛽️      |        |
+| H03.FR.09 | ✅      |        |
+| H03.FR.10 | ✅      |        |
 
 ## Reservation - Reservation Ended, not used
 
 | ID        | Status | Remark |
 |-----------|--------|--------|
-| H04.FR.01 |        |        |
-| H04.FR.02 |        |        |
-| H04.FR.03 |        |        |
+| H04.FR.01 | ✅      |        |
+| H04.FR.02 | ✅      |        |
+| H04.FR.03 |        | Not all the connectors maybe?       |
 
 ## TariffAndCost - Show EV Driver-specific Tariff Information
 
