@@ -8,7 +8,6 @@ namespace ocpp {
 ChargingStationBase::ChargingStationBase(const std::shared_ptr<EvseSecurity> evse_security,
                                          const std::optional<SecurityConfiguration> security_configuration) :
     uuid_generator(boost::uuids::random_generator()) {
-	EVLOG_info << "Library evse_security 0";
     if (evse_security != nullptr) {
         this->evse_security = evse_security;
     } else {
