@@ -25,12 +25,30 @@
 #include <ocpp/common/cistring.hpp>
 #include <ocpp/common/string.hpp>
 #include <ocpp/common/support_older_cpp_versions.hpp>
+#include <ocpp/common/evse_security.hpp>
+#include <dlfcn.h>
 
 namespace po = boost::program_options;
 
 ocpp::v16::ChargePoint* charge_point;
 bool running = false;
 std::mutex m;
+
+int someTest(){
+
+	void *handle;
+
+	//handle = dlopen("/usr/lib/libocpp_1_6.so", RTLD_NOW);
+	//handle = dlopen("/usr/lib/libocpp.so", RTLD_NOW);
+
+	handle = dlopen("/opt/ssb/apps/codesys/lib/libCmpOcpp.so", RTLD_NOW);
+	if (!handle) {
+	/* fail to load the library */
+		fprintf(stderr, "Error: %s\n", dlerror());
+	return EXIT_FAILURE;
+	}
+
+}
 
 int main(int argc, char* argv[]) {
     po::options_description desc("OCPP charge point");
@@ -44,6 +62,8 @@ int main(int argc, char* argv[]) {
     po::store(po::parse_command_line(argc, argv, desc), vm);
     po::notify(vm);
 
+    	someTest();
+    	exit(0);
     if (vm.count("help") != 0) {
         std::cout << desc << "\n";
         return 1;
@@ -62,7 +82,7 @@ int main(int argc, char* argv[]) {
     if (vm.count("logconf") != 0) {
         logging_config = fs::path(vm["logconf"].as<std::string>());
     }
-    Everest::Logging::init(logging_config.string(), "charge_point");
+    Everest::Logging::init(logging_config.string(), "charge_point",0);
 
     std::string conf = "config.json";
     if (vm.count("conf") != 0) {
@@ -124,20 +144,35 @@ int main(int argc, char* argv[]) {
         fsstd::ofstream("/tmp/certs/ca/mo//MO_CA_BUNDLE.pem");
     }
 
-    ocpp::SecurityConfiguration secConfig;
-    secConfig.csms_ca_bundle = fs::path("/tmp/certs/ca/v2g/V2G_CA_BUNDLE.pem");
-    secConfig.mf_ca_bundle = fs::path("/tmp/certs/ca/v2g/V2G_CA_BUNDLE.pem");
-    secConfig.v2g_ca_bundle = fs::path("/tmp/certs/ca/v2g/V2G_CA_BUNDLE.pem");
-    secConfig.mo_ca_bundle = fs::path("/tmp/certs/ca/mo/MO_CA_BUNDLE.pem");
+	ocpp::SecurityConfiguration mySec;
+	mySec.csms_ca_bundle = fs::path("/tmp/certs/ca/v2g/V2G_CA_BUNDLE.pem");
+	mySec.mf_ca_bundle = fs::path("/tmp/certs/ca/v2g/V2G_CA_BUNDLE.pem");
+	mySec.v2g_ca_bundle = fs::path("/tmp/certs/ca/v2g/V2G_CA_BUNDLE.pem");
+	mySec.mo_ca_bundle = fs::path("/tmp/certs/ca/mo/MO_CA_BUNDLE.pem");
 
-    secConfig.csms_leaf_cert_directory = fs::path("/tmp/client/csms/");
-    secConfig.csms_leaf_key_directory = fs::path("/tmp/client/csms/");
-    secConfig.secc_leaf_cert_directory = fs::path("/tmp/client/cso/");
-    secConfig.secc_leaf_key_directory = fs::path("/tmp/client/cso/");
+	mySec.csms_leaf_cert_directory = fs::path("/tmp/client/csms/");
+	mySec.csms_leaf_key_directory = fs::path("/tmp/client/csms/");
+	mySec.secc_leaf_cert_directory = fs::path("/tmp/client/cso/");
+	mySec.secc_leaf_key_directory = fs::path("/tmp/client/cso/");
+
+    std::optional<ocpp::SecurityConfiguration> secConfig ={ mySec};
+
+    std::shared_ptr<ocpp::EvseSecurity> evse_security=nullptr;
+    EVLOG_info << "ocpp init 1";
+    if (evse_security != nullptr) {
+    	//this->evse_security = evse_security;
+    	EVLOG_info << "Library evse_security 1";
+    } else {
+    	if (!secConfig.has_value()) {
+    		EVLOG_info << "Library evse_security 2";
+    	}else{
+    		EVLOG_info << "Library evse_security 3";
+    	}
+    }
 
     charge_point = new ocpp::v16::ChargePoint(json_config.dump(), share_path, user_config_path, database_path,
-                                              sql_init_path, fs::path("/tmp"), nullptr, secConfig);
-
+                                              sql_init_path, fs::path("/tmp"), evse_security, secConfig);
+    EVLOG_info << "ocpp init 2";
     /************************************** START REGISTERING CALLBACKS **************************************/
 
     charge_point->register_enable_evse_callback([](int32_t connector) {

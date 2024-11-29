@@ -74,7 +74,7 @@ void MessageLogging::initialize() {
             output_file_path += output_file_name;
             output_file_path += +".log";
             EVLOG_info << "Logging OCPP messages to log file: " << output_file_path;
-            this->log_file = std::filesystem::path(output_file_path);
+            this->log_file = fs::path(output_file_path);
             this->log_os.open(output_file_path, std::ofstream::app);
             this->rotate_log_if_needed(this->log_file, this->log_os);
         }
@@ -84,7 +84,7 @@ void MessageLogging::initialize() {
             html_file_path += output_file_name;
             html_file_path += ".html";
             EVLOG_info << "Logging OCPP messages to html file: " << html_file_path;
-            this->html_log_file = std::filesystem::path(html_file_path);
+            this->html_log_file = fs::path(html_file_path);
             this->html_log_os.open(html_log_file, std::ofstream::app);
             this->rotate_log_if_needed(
                 this->html_log_file, this->html_log_os, [this](std::ofstream& os) { this->close_html_tags(os); },
@@ -101,7 +101,7 @@ void MessageLogging::initialize() {
             security_file_path += output_file_name;
             security_file_path += ".security.log";
             EVLOG_info << "Logging SecurityEvents to file: " << security_file_path;
-            this->security_log_file = std::filesystem::path(security_file_path);
+            this->security_log_file = fs::path(security_file_path);
             this->security_log_os.open(security_log_file, std::ofstream::app);
             this->rotate_log_if_needed(this->security_log_file, this->security_log_os);
         }
@@ -147,9 +147,9 @@ std::string MessageLogging::get_datetime_string() {
     return date::format("%Y%m%d%H%M%S", std::chrono::time_point_cast<std::chrono::seconds>(date::utc_clock::now()));
 }
 
-std::uintmax_t MessageLogging::file_size(const std::filesystem::path& path) {
+std::uintmax_t MessageLogging::file_size(const fs::path& path) {
     try {
-        return std::filesystem::file_size(path);
+        return fs::file_size(path);
     } catch (...) {
         return 0;
     }
@@ -157,23 +157,23 @@ std::uintmax_t MessageLogging::file_size(const std::filesystem::path& path) {
 
 LogRotationStatus MessageLogging::rotate_log(const std::string& file_basename) {
     LogRotationStatus status = LogRotationStatus::NotRotated;
-    auto path = std::filesystem::path(this->message_log_path);
-    std::vector<std::filesystem::path> files;
-    for (const auto& entry : std::filesystem::directory_iterator(path)) {
+    auto path = fs::path(this->message_log_path);
+    std::vector<fs::path> files;
+    for (const auto& entry : fs::directory_iterator(path)) {
         const auto& file_path = entry.path();
-        if (std::filesystem::is_regular_file(entry)) {
+        if (fs::is_regular_file(entry)) {
             // check file
             if (file_path.filename() == file_basename or file_path.stem() == file_basename) {
                 files.push_back(file_path);
             }
         }
     }
-    std::sort(files.begin(), files.end(), std::greater<std::filesystem::path>());
+    std::sort(files.begin(), files.end(), std::greater<fs::path>());
 
     if (this->maximum_file_count > 0 and files.size() >= this->maximum_file_count) {
         // drop the oldest file
         EVLOG_info << "Removing oldest log file: " << files.front();
-        std::filesystem::remove(files.front());
+        fs::remove(files.front());
         files.erase(files.begin());
         status = LogRotationStatus::RotatedWithDeletion;
     }
@@ -181,16 +181,16 @@ LogRotationStatus MessageLogging::rotate_log(const std::string& file_basename) {
     // rename the oldest file first
     for (auto& file : files) {
         if (file.filename() == file_basename) {
-            std::filesystem::path new_file_name;
+            fs::path new_file_name;
             if (this->date_suffix) {
-                new_file_name = std::filesystem::path(file.string() + "." + this->get_datetime_string());
+                new_file_name = fs::path(file.string() + "." + this->get_datetime_string());
             } else {
                 // traditional .0 .1 ... suffix
                 // does not have a .0 or .1, so needs a new one
-                new_file_name = std::filesystem::path(file.string() + ".0");
+                new_file_name = fs::path(file.string() + ".0");
             }
 
-            std::filesystem::rename(file, new_file_name);
+            fs::rename(file, new_file_name);
             EVLOG_info << "Renaming: " << file.string() << " -> " << new_file_name.string();
             if (status == LogRotationStatus::NotRotated) {
                 status == LogRotationStatus::Rotated;
@@ -205,10 +205,10 @@ LogRotationStatus MessageLogging::rotate_log(const std::string& file_basename) {
                     extension += 1;
                     auto new_extension = std::to_string(extension);
 
-                    std::filesystem::path new_file_name = file;
+                    fs::path new_file_name = file;
                     new_file_name.replace_extension(new_extension);
                     EVLOG_info << "Renaming: " << file.string() << " -> " << new_file_name.string();
-                    std::filesystem::rename(file, new_file_name);
+                    fs::rename(file, new_file_name);
                     if (status == LogRotationStatus::NotRotated) {
                         status == LogRotationStatus::Rotated;
                     }
@@ -222,11 +222,11 @@ LogRotationStatus MessageLogging::rotate_log(const std::string& file_basename) {
     return status;
 }
 
-LogRotationStatus MessageLogging::rotate_log_if_needed(const std::filesystem::path& path, std::ofstream& os) {
+LogRotationStatus MessageLogging::rotate_log_if_needed(const fs::path& path, std::ofstream& os) {
     return rotate_log_if_needed(path, os, nullptr, nullptr);
 }
 
-LogRotationStatus MessageLogging::rotate_log_if_needed(const std::filesystem::path& path, std::ofstream& os,
+LogRotationStatus MessageLogging::rotate_log_if_needed(const fs::path& path, std::ofstream& os,
                                                        std::function<void(std::ofstream& os)> before_close_of_os,
                                                        std::function<void(std::ofstream& os)> after_open_of_os) {
     LogRotationStatus status = LogRotationStatus::NotRotated;

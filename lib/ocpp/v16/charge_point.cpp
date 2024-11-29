@@ -14,7 +14,8 @@ ChargePoint::ChargePoint(const std::string& config, const fs::path& share_path, 
                          const fs::path& database_path, const fs::path& sql_init_path, const fs::path& message_log_path,
                          const std::shared_ptr<EvseSecurity> evse_security,
                          const std::optional<SecurityConfiguration> security_configuration) {
-    this->charge_point =
+	EVLOG_info << "ocpp init 111";
+	this->charge_point =
         std::make_unique<ChargePointImpl>(config, share_path, user_config_path, database_path, sql_init_path,
                                           message_log_path, evse_security, security_configuration);
 }

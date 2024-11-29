@@ -104,24 +104,23 @@ EvseSecurityImpl::generate_certificate_signing_request(const CertificateSigningU
         conversions::from_ocpp(certificate_type), country, organization, common, use_tpm);
 
     GetCertificateSignRequestResult result;
-
-    result.status = conversions::to_ocpp(csr_response.status);
-    result.csr = csr_response.csr;
+    //result.status = conversions::to_ocpp(csr_response.status);
+    //result.csr = csr_response.csr;
 
     return result;
 }
 
 GetCertificateInfoResult EvseSecurityImpl::get_leaf_certificate_info(const CertificateSigningUseEnum& certificate_type,
                                                                      bool include_ocsp) {
-    const auto info_response = this->evse_security->get_leaf_certificate_info(
-        conversions::from_ocpp(certificate_type), evse_security::EncodingFormat::PEM, include_ocsp);
+	//TODO: Needs improved modification as it is not present in 0.6.0
+	//const auto info_response = this->evse_security->get_leaf_certificate_info(
+	//    conversions::from_ocpp(certificate_type), evse_security::EncodingFormat::PEM, include_ocsp);
 
     GetCertificateInfoResult result;
-
-    result.status = conversions::to_ocpp(info_response.status);
-    if (info_response.info.has_value()) {
-        result.info = conversions::to_ocpp(info_response.info.value());
-    }
+    //result.status = conversions::to_ocpp(info_response.status);
+    //if (info_response.info.has_value()) {
+    	//    result.info = conversions::to_ocpp(info_response.info.value());
+    //}
 
     return result;
 }

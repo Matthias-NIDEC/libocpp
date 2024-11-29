@@ -26,12 +26,12 @@
 #endif
 
 namespace {
-std::optional<std::filesystem::path> keylog_file;
+std::optional<fs::path> keylog_file;
 
 void keylog_callback(const SSL* ssl, const char* line) {
     if (keylog_file.has_value()) {
         std::ofstream keylog_ofs;
-        keylog_ofs.open(keylog_file.value(), std::ofstream::out | std::ofstream::app);
+        keylog_ofs.open(keylog_file.value().string(), std::ofstream::out | std::ofstream::app);
         keylog_ofs << line << std::endl;
         keylog_ofs.close();
     }
@@ -175,10 +175,10 @@ static bool verify_csms_cn(const std::string& hostname, bool preverified, const 
     // This thus gives also the position (in the chain)  of the currently to be verified certificate.
     // If depth is 0, we need to check the leaf certificate;
     // If depth > 0, we are verifying a CA (or SUB-CA) certificate and thus trust "preverified"
-    int depth = X509_STORE_CTX_get_error_depth(ctx);
+    int depth = X509_STORE_CTX_get_error_depth((x509_store_ctx_st*)ctx);
 
     if (!preverified) {
-        int error = X509_STORE_CTX_get_error(ctx);
+        int error = X509_STORE_CTX_get_error((x509_store_ctx_st*)ctx);
         EVLOG_warning << "Invalid certificate error '" << X509_verify_cert_error_string(error) << "' (at chain depth '"
                       << depth << "')";
     }
@@ -186,7 +186,7 @@ static bool verify_csms_cn(const std::string& hostname, bool preverified, const 
     // only check for CSMS server certificate
     if (depth == 0 and preverified) {
         // Get server certificate
-        X509* server_cert = X509_STORE_CTX_get_current_cert(ctx);
+        X509* server_cert = X509_STORE_CTX_get_current_cert((x509_store_ctx_st*)ctx);
 
         // TODO (ioan): this manual verification is done because libwebsocket does not take into account
         // the host parameter that we are setting during 'tls_init'. This function should be removed
@@ -327,7 +327,12 @@ bool WebsocketLibwebsockets::tls_init(SSL_CTX* ctx, const std::string& path_chai
         return false;
     }
 
-    rc = SSL_CTX_set_ciphersuites(ctx, this->connection_options.supported_ciphers_13.c_str());
+#ifndef OPENSSL_VERSION_1_1_1F
+        rc = SSL_CTX_set_ciphersuites(ctx, this->connection_options.supported_ciphers_13.c_str());
+#else
+        rc = SSL_CTX_set_cipher_list(ctx, this->connection_options.supported_ciphers_13.c_str());
+#endif
+
     if (rc != 1) {
         EVLOG_debug << "SSL_CTX_set_cipher_list return value: " << rc;
     }
@@ -529,9 +534,9 @@ void WebsocketLibwebsockets::client_loop() {
             const auto& certificate_info = certificate_response.info.value();
 
             if (certificate_info.certificate_path.has_value()) {
-                path_chain = certificate_info.certificate_path.value();
+                path_chain = certificate_info.certificate_path.value().string();
             } else if (certificate_info.certificate_single_path.has_value()) {
-                path_chain = certificate_info.certificate_single_path.value();
+                path_chain = certificate_info.certificate_single_path.value().string();
             } else {
                 EVLOG_error << "Connecting with security profile 3 but no client side certificate is present or valid";
 
@@ -543,7 +548,7 @@ void WebsocketLibwebsockets::client_loop() {
                 return;
             }
 
-            path_key = certificate_info.key_path;
+            path_key = certificate_info.key_path.string();
             private_key_password = certificate_info.password;
         }
 
@@ -551,7 +556,7 @@ void WebsocketLibwebsockets::client_loop() {
         bool custom_key = false;
 
         if (!path_key.empty()) {
-            custom_key = is_custom_private_key_file(path_key);
+            //custom_key = is_custom_private_key_file(path_key);
         }
 
         OpenSSLProvider provider;
@@ -580,7 +585,8 @@ void WebsocketLibwebsockets::client_loop() {
         if (this->connection_options.enable_tls_keylog and this->connection_options.keylog_file.has_value()) {
             EVLOG_info << "Logging TLS secrets to: " << this->connection_options.keylog_file.value().string();
             keylog_file = this->connection_options.keylog_file;
-            SSL_CTX_set_keylog_callback(ssl_ctx, keylog_callback);
+            //TODO: find a way for PD19
+            //SSL_CTX_set_keylog_callback(ssl_ctx, keylog_callback);
         }
 
         // Init TLS data

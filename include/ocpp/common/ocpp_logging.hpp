@@ -3,7 +3,7 @@
 #ifndef OCPP_COMMON_LOGGING_HPP
 #define OCPP_COMMON_LOGGING_HPP
 
-#include <filesystem>
+#include <support_older_cpp_versions.hpp>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -53,12 +53,12 @@ private:
     bool log_to_html;
     bool log_security;
     bool session_logging;
-    std::filesystem::path log_file;
+    fs::path log_file;
     std::ofstream log_os;
-    std::filesystem::path html_log_file;
-    std::ofstream html_log_os;
-    std::filesystem::path security_log_file;
-    std::ofstream security_log_os;
+    fs::path html_log_file;
+    fs::ofstream html_log_os;
+    fs::path security_log_file;
+    fs::ofstream security_log_os;
     std::mutex output_file_mutex;
     std::function<void(const std::string& message, MessageDirection direction)> message_callback;
     std::function<void(LogRotationStatus status)> status_callback;
@@ -93,18 +93,18 @@ private:
     std::string get_datetime_string();
 
     /// \returns file size of the given path or 0 if the file does not exist
-    std::uintmax_t file_size(const std::filesystem::path& path);
+    std::uintmax_t file_size(const fs::path& path);
 
     /// \brief Rotates the log at the given file \p file_basename and remove oldest file if there are more log files
     /// than the maximum
     LogRotationStatus rotate_log(const std::string& file_basename);
 
     /// \brief Rotates the log at the given \p path if needed based on the config, closing the stream \p os before
-    LogRotationStatus rotate_log_if_needed(const std::filesystem::path& path, std::ofstream& os);
+    LogRotationStatus rotate_log_if_needed(const fs::path& path, std::ofstream& os);
 
     /// \brief Rotates the log at the given \p path if needed based on the config, calling \p before_close_of_os before
     /// closing the stream \p os and calling \p after_open_of_os afterwards
-    LogRotationStatus rotate_log_if_needed(const std::filesystem::path& path, std::ofstream& os,
+    LogRotationStatus rotate_log_if_needed(const fs::path& path, std::ofstream& os,
                                            std::function<void(std::ofstream& os)> before_close_of_os,
                                            std::function<void(std::ofstream& os)> after_open_of_os);
 
