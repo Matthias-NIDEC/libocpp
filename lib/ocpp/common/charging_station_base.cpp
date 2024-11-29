@@ -11,15 +11,10 @@ ChargingStationBase::ChargingStationBase(const std::shared_ptr<EvseSecurity> evs
 	EVLOG_info << "Library evse_security 0";
     if (evse_security != nullptr) {
         this->evse_security = evse_security;
-        EVLOG_info << "Library evse_security 1";
-
     } else {
         if (!security_configuration.has_value()) {
-        	EVLOG_info << "Library evse_security 2";
             throw std::runtime_error("No implementation of ESecurit 111222 nterface and no SecurityConfiguration "
         	                         "provided to chargepoint constructor. One of options must be set");
-        }else{
-        	EVLOG_info << "Library evse_security 3";
         }
         this->evse_security = std::make_shared<EvseSecurityImpl>(security_configuration.value());
     }
