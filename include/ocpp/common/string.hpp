@@ -46,8 +46,13 @@ public:
                 throw std::runtime_error("String has invalid format");
             }
         } else {
-            throw std::runtime_error("String length (" + std::to_string(data.length()) +
-                                     ") exceeds permitted length (" + std::to_string(this->length) + ")");
+            if (this->is_valid(data)) {
+                this->data = data.substr(0, this->length);
+                //throw std::runtime_error("String length (" + std::to_string(data.length()) +
+                //                     ") exceeds permitted length (" + std::to_string(this->length) + ")");
+            } else {
+                throw std::runtime_error("String has invalid format");
+            }
         }
     }
 
