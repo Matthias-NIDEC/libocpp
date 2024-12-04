@@ -255,7 +255,7 @@ private:
     // new transaction handling:
     void start_transaction(std::shared_ptr<Transaction> transaction);
 
-    void stop_transaction(int32_t connector, Reason reason, std::optional<CiString<20>> id_tag_end);
+    void stop_transaction(int32_t connector, Reason reason, std::optional<CiString<20>> id_tag_end, bool xAddToMessageQueue = true);
 
     /// \brief Converts the given \p measurands_csv to a vector of Measurands
     /// \param measurands_csv

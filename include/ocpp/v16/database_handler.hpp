@@ -159,6 +159,8 @@ public:
 
     /// \brief Gets the only entry in the OCSP_REQUEST table
     std::optional<DateTime> get_last_ocsp_update();
+
+    int get_transaction_id(const std::string& session_id);
 };
 
 } // namespace v16

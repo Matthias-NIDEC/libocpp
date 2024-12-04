@@ -614,5 +614,24 @@ std::optional<DateTime> DatabaseHandler::get_last_ocsp_update() {
     throw QueryExecutionException(this->database->get_error_message());
 }
 
+int DatabaseHandler::get_transaction_id(const std::string& session_id) {
+    std::string sql = "SELECT TRANSACTION_ID FROM TRANSACTIONS WHERE ID = @session_id";
+    auto stmt = this->database->new_statement(sql);
+
+    stmt->bind_text("@session_id", session_id, SQLiteString::Transient);
+
+    int status = stmt->step();
+
+    if (status == SQLITE_DONE) {
+        return -1;
+    }
+
+    if (status == SQLITE_ROW) {
+        return stmt->column_int(0);
+    }
+
+    throw QueryExecutionException(this->database->get_error_message());
+}
+
 } // namespace v16
 } // namespace ocpp
