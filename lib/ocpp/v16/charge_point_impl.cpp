@@ -1716,7 +1716,10 @@ void ChargePointImpl::handleChangeConfigurationRequest(ocpp::Call<ChangeConfigur
                         ocpp::CallResult<ChangeConfigurationResponse> call_result(response, call.uniqueId);
                         this->message_dispatcher->dispatch_call_result(call_result);
                         responded = true;
-                        this->websocket->reconnect(1000);
+                        //It is managed by codesys as changeConfiguraiton Callback
+                        //and treated the same as a connectionString change
+                        //Also the AuthorizationKey has to be written into the deviceTwin.json
+                        //this->websocket->reconnect(1000);
                     } else {
                         EVLOG_info << "AuthorizationKey was changed while on security profile 3. Nothing to do.";
                     }
