@@ -18,6 +18,7 @@ class ChargePointConfiguration {
 private:
     json config;
     json custom_schema;
+    json internal_schema;
     fs::path user_config_path;
 
     std::set<SupportedFeatureProfiles> supported_feature_profiles;
@@ -46,6 +47,7 @@ public:
     // Internal config options
     std::string getChargePointId();
     KeyValue getChargePointIdKeyValue();
+    void setCentralSystemURI(std::string ocpp_uri);
     std::string getCentralSystemURI();
     KeyValue getCentralSystemURIKeyValue();
     std::string getChargeBoxSerialNumber();
