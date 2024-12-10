@@ -580,7 +580,7 @@ public:
     }
 
     /// \brief Gets all persisted messages of normal message queue and persisted message queue from the database
-    void get_persisted_messages_from_db(bool ignore_security_event_notifications = false) {
+    void get_persisted_messages_from_db(std::vector<int>& transactionInFlight, bool ignore_security_event_notifications = false) {
         std::vector<QueueType> queue_types = {QueueType::Normal, QueueType::Transaction};
         // do for Normal and Transaction queue
         for (const auto queue_type : queue_types) {
@@ -609,6 +609,8 @@ public:
                         if (queue_type == QueueType::Normal) {
                             normal_message_queue.push_back(message);
                         } else if (queue_type == QueueType::Transaction) {
+                            Call<v16::StopTransactionRequest> call=persisted_message.json_message;
+                            transactionInFlight.push_back(call.msg.transactionId);
                             transaction_message_queue.push_back(message);
                         }
                     }

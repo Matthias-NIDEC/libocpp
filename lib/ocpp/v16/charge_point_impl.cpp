@@ -478,7 +478,8 @@ void ChargePointImpl::update_clock_aligned_meter_values_interval() {
     }
 }
 
-void ChargePointImpl::try_resume_transactions(const std::set<std::string>& resuming_session_ids) {
+void ChargePointImpl::try_resume_transactions(const std::vector<int>& transactionIdsInFlight,
+        const std::set<std::string>& resuming_session_ids) {
     std::vector<ocpp::v16::TransactionEntry> transactions;
     try {
         transactions = this->database_handler->get_transactions(true);
@@ -515,9 +516,12 @@ void ChargePointImpl::try_resume_transactions(const std::set<std::string>& resum
         EVLOG_info << "Trying to resume transaction with session_id: " << transaction_entry.session_id
                    << " and transaction_id: " << transaction_entry.transaction_id;
 
-        if (this->message_queue->contains_stop_transaction_message(transaction_entry.transaction_id)) {
+        if (this->message_queue->contains_stop_transaction_message(transaction_entry.transaction_id)||
+            std::find(transactionIdsInFlight.begin(), transactionIdsInFlight.end(), transaction_entry.transaction_id) !=
+                    transactionIdsInFlight.end()) {
             // StopTransaction.req is already queued for the transaction in the database, so we mark the transaction as
             // stopped and wait for the StopTransaction.conf
+            EVLOG_info << "Is already sent";
             transaction->set_finished();
             this->transaction_handler->add_stopped_transaction(transaction->get_connector());
         } else {
@@ -1075,9 +1079,10 @@ bool ChargePointImpl::start(const std::map<int, ChargePointStatus>& connector_st
     this->init_websocket();
     this->websocket->connect();
     // push transaction messages including SecurityEventNotification.req onto the message queue
-    this->message_queue->get_persisted_messages_from_db(this->configuration->getDisableSecurityEventNotifications());
+    std::vector<int> transactionIdsInFlight;
+    this->message_queue->get_persisted_messages_from_db(transactionIdsInFlight, this->configuration->getDisableSecurityEventNotifications());
     this->boot_notification();
-    this->try_resume_transactions(resuming_session_ids);
+    this->try_resume_transactions(transactionIdsInFlight, resuming_session_ids);
     this->call_set_connection_timeout();
 
     switch (bootreason) {
@@ -4174,20 +4179,9 @@ void ChargePointImpl::on_transaction_stopped(const int32_t connector, const std:
                                              std::optional<CiString<20>> id_tag_end,
                                              std::optional<std::string> signed_meter_value) {
     auto transaction = this->transaction_handler->get_transaction(connector);
-    bool xAddToQueue= true;
-    if (transaction == nullptr and session_id.length()> 0) {
-        EVLOG_info << "Trying to stop a transaction that is unknown on connector: " << connector
+    if (transaction == nullptr) {
+        EVLOG_error << "Trying to stop a transaction that is unknown on connector: " << connector
                     << ", with session_id: " << session_id;
-        xAddToQueue= false;
-
-        int transaction_id=this->database_handler->get_transaction_id(session_id);
-
-        std::shared_ptr<Transaction> transaction = std::make_shared<Transaction>(transaction_id,
-                connector, session_id, CiString<20>(""),0, 0,ocpp::DateTime(), nullptr);
-        this->transaction_handler->add_transaction(transaction);
-
-    }else{
-        EVLOG_error << "Trying to stop a transaction that is unknown on connector: " << connector;
         return;
     }
 
@@ -4204,7 +4198,7 @@ void ChargePointImpl::on_transaction_stopped(const int32_t connector, const std:
     transaction->add_stop_energy_wh(stop_energy_wh);
 
     this->status->submit_event(connector, FSMEvent::TransactionStoppedAndUserActionRequired, ocpp::DateTime());
-    this->stop_transaction(connector, reason, id_tag_end, xAddToQueue);
+    this->stop_transaction(connector, reason, id_tag_end);
     this->transaction_handler->remove_active_transaction(connector);
     this->connectors.at(connector)->transaction = nullptr;
 
@@ -4216,7 +4210,7 @@ void ChargePointImpl::on_transaction_stopped(const int32_t connector, const std:
     reset_pricing_triggers(connector);
 }
 
-void ChargePointImpl::stop_transaction(int32_t connector, Reason reason, std::optional<CiString<20>> id_tag_end, bool xAddToMessageQueue) {
+void ChargePointImpl::stop_transaction(int32_t connector, Reason reason, std::optional<CiString<20>> id_tag_end) {
     EVLOG_debug << "Called stop transaction with reason: " << conversions::reason_to_string(reason);
     StopTransactionRequest req;
 
@@ -4253,7 +4247,7 @@ void ChargePointImpl::stop_transaction(int32_t connector, Reason reason, std::op
         utils::drop_transaction_data(max_message_size, call);
     }
 
-    if (xAddToMessageQueue) {
+    {
         std::lock_guard<std::mutex> lock(this->stop_transaction_mutex);
         this->message_dispatcher->dispatch_call(call);
     }

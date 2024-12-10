@@ -247,7 +247,7 @@ private:
     /// resuming_session_ids contain the internal session_id, this function attempts to resume the transaction by
     /// initializing it and adding it to the \ref transaction_handler. If the session_id is not part of \p
     /// resuming_session_ids a StopTransaction.req is initiated to properly close the transaction.
-    void try_resume_transactions(const std::set<std::string>& resuming_session_ids);
+    void try_resume_transactions(const std::vector<int>& transactionIdsInFlight, const std::set<std::string>& resuming_session_ids);
     void stop_all_transactions();
     void stop_all_transactions(Reason reason);
     bool validate_against_cache_entries(CiString<20> id_tag);
@@ -255,7 +255,7 @@ private:
     // new transaction handling:
     void start_transaction(std::shared_ptr<Transaction> transaction);
 
-    void stop_transaction(int32_t connector, Reason reason, std::optional<CiString<20>> id_tag_end, bool xAddToMessageQueue = true);
+    void stop_transaction(int32_t connector, Reason reason, std::optional<CiString<20>> id_tag_end);
 
     /// \brief Converts the given \p measurands_csv to a vector of Measurands
     /// \param measurands_csv
