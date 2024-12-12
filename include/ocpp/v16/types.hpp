@@ -217,11 +217,12 @@ void from_json(const json& j, EnhancedChargingSchedulePeriod& k);
 /// \brief Enhances ChargingSchedule by containing std::vector<EnhancedChargingSchedulePeriods> instead of
 /// std::vector<ChargingSchedulePeriod>
 struct EnhancedChargingSchedule {
-    ChargingRateUnit chargingRateUnit;
+    ChargingRateUnit chargingRateUnit; //the potenital covnerted unit
     std::vector<EnhancedChargingSchedulePeriod> chargingSchedulePeriod;
     std::optional<int32_t> duration;
     std::optional<ocpp::DateTime> startSchedule;
     std::optional<float> minChargingRate;
+    bool profileTransformed=false; //indicates that a profile was transformed from chargingRateUnit
 };
 
 /// \brief Conversion from a given EnhancedChargingSchedule \p k to a given json object \p j
