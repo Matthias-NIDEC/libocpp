@@ -3406,7 +3406,6 @@ std::map<int32_t, ChargingSchedule> ChargePointImpl::get_all_composite_charging_
 
         const auto valid_profiles =
             this->smart_charging_handler->get_valid_profiles(start_time, end_time, connector_id, purposes_to_ignore);
-        EVLOG_info << "Nr of valid profiles " << valid_profiles.size() << " for connector " << connector_id;
         const auto composite_schedule = this->smart_charging_handler->calculate_composite_schedule(
             valid_profiles, start_time, end_time, connector_id, unit);
         charging_schedules[connector_id] = composite_schedule;
