@@ -2294,8 +2294,11 @@ void ChargePointImpl::handleSetChargingProfileRequest(ocpp::Call<SetChargingProf
 
     auto profile = call.msg.csChargingProfiles;
     const int connector_id = call.msg.connectorId;
-
-    if (connector_id > 0 and connector_id <= this->configuration->getNumberOfConnectors()) {
+    bool connectorIdInValidRange=true;
+    if (connector_id > this->configuration->getNumberOfConnectors() or  connector_id <0 ) {
+       	connectorIdInValidRange=false;
+    }
+    if (connectorIdInValidRange) {
         const auto supported_purpose_types = this->configuration->getSupportedChargingProfilePurposeTypes();
         if (std::find(supported_purpose_types.begin(), supported_purpose_types.end(),
                       call.msg.csChargingProfiles.chargingProfilePurpose) == supported_purpose_types.end()) {

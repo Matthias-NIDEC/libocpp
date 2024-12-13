@@ -38,7 +38,7 @@ template <typename M> struct MessageQueueConfig {
     std::set<M> message_types_discard_for_queueing; // allows to discard certain message types for offline queuing (e.g.
                                                     // Heartbeat)
 
-    int message_timeout_seconds = 30;
+    int message_timeout_seconds = 60;
     int boot_notification_retry_interval_seconds =
         60; // interval for BootNotification.req in case response by CSMS is CALLERROR or CSMS does not respond at all
             // (within specified MessageTimeout)
