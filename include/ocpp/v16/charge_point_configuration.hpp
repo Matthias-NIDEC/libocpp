@@ -465,6 +465,7 @@ public:
     std::optional<std::string> getDisplayTimeOffset();
     ConfigurationStatus setDisplayTimeOffset(const std::string& offset);
     std::optional<KeyValue> getDisplayTimeOffsetKeyValue();
+    void setCustomDisplayCostAndPrice(const bool& value);
 
     std::optional<std::string> getNextTimeOffsetTransitionDateTime();
     ConfigurationStatus setNextTimeOffsetTransitionDateTime(const std::string& date_time);

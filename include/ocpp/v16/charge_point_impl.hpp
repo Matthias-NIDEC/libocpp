@@ -677,6 +677,8 @@ public:
         const CiString<255>& vendorId, const CiString<50>& messageId,
         const std::function<DataTransferResponse(const std::optional<std::string>& msg)>& callback);
 
+    void deregister_data_transfer_callback(
+        const CiString<255>& vendorId, const CiString<50>& messageId);
     /// registers a \p callback function that can be used to handle arbitrary data transfers for all vendorId an
     /// messageId
     /// \param callback

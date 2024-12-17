@@ -4024,6 +4024,19 @@ void ChargePointImpl::register_data_transfer_callback(
     this->data_transfer_callbacks[vendorId.get()][messageId.get()] = callback;
 }
 
+void ChargePointImpl::deregister_data_transfer_callback(
+    const CiString<255>& vendorId, const CiString<50>& messageId) {
+    std::lock_guard<std::mutex> lock(data_transfer_callbacks_mutex);
+    if (this->data_transfer_callbacks.count(vendorId) > 0 ) {
+    	if (this->data_transfer_callbacks[vendorId].count(messageId) > 0) {
+    		this->data_transfer_callbacks[vendorId.get()].erase(messageId.get());
+    	}
+    	if (this->data_transfer_callbacks[vendorId.get()].size() == 0 ){
+    		this->data_transfer_callbacks.erase(vendorId.get());
+    	}
+    }
+}
+
 void ChargePointImpl::register_data_transfer_callback(
     const std::function<DataTransferResponse(const DataTransferRequest& request)>& callback) {
     this->data_transfer_callback = callback;

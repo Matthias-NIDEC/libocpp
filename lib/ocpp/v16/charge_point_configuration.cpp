@@ -2515,8 +2515,8 @@ KeyValue ChargePointConfiguration::getCustomDisplayCostAndPriceEnabledKeyValue()
     const bool enabled = getCustomDisplayCostAndPriceEnabled();
     KeyValue kv;
     kv.key = "CustomDisplayCostAndPrice";
-    kv.value = std::to_string(enabled);
-    kv.readonly = true;
+    kv.value = ocpp::conversions::bool_to_string(enabled);
+    kv.readonly = false;
     return kv;
 }
 
@@ -2816,9 +2816,10 @@ std::optional<KeyValue> ChargePointConfiguration::getTimeOffsetNextTransitionKey
 
 std::optional<bool> ChargePointConfiguration::getCustomIdleFeeAfterStop() {
     if (this->config.contains("CostAndPrice") and this->config["CostAndPrice"].contains("CustomIdleFeeAfterStop")) {
-        return this->config["CostAndPrice"]["CustomIdleFeeAfterStop"];
+    	EVLOG_info << "retrieving key: CustomIdleFeeAfterStop present";
+    	return this->config["CostAndPrice"]["CustomIdleFeeAfterStop"];
     }
-
+    EVLOG_info << "retrieving key: not possible CustomIdleFeeAfterStop present";
     return std::nullopt;
 }
 
@@ -2827,13 +2828,19 @@ void ChargePointConfiguration::setCustomIdleFeeAfterStop(const bool& value) {
     this->setInUserConfig("CostAndPrice", "CustomIdleFeeAfterStop", value);
 }
 
+void ChargePointConfiguration::setCustomDisplayCostAndPrice(const bool& value) {
+    this->config["CostAndPrice"]["CustomDisplayCostAndPrice"] = value;
+    this->setInUserConfig("CostAndPrice", "CustomDisplayCostAndPrice", value);
+}
+
 std::optional<KeyValue> ChargePointConfiguration::getCustomIdleFeeAfterStopKeyValue() {
     std::optional<KeyValue> result = std::nullopt;
     std::optional<bool> idle_fee = getCustomIdleFeeAfterStop();
     if (idle_fee.has_value()) {
         result = KeyValue();
         result->key = "CustomIdleFeeAfterStop";
-        result->value = std::to_string(idle_fee.value());
+        result->value = ocpp::conversions::bool_to_string(idle_fee.value());
+        EVLOG_info << "retrieving key: CustomIdleFeeAfterStop" << std::to_string(idle_fee.value());
         result->readonly = false;
     }
 
@@ -2938,7 +2945,8 @@ ConfigurationStatus ChargePointConfiguration::setCustomKey(CiString<50> key, CiS
     }
     std::lock_guard<std::recursive_mutex> lock(this->configuration_mutex);
     try {
-        const auto type = custom_schema["properties"][key]["type"];
+        const std::string customObject="Custom";
+    	const auto type = custom_schema["properties"][key]["type"];
         json new_value;
         if (type == "integer") {
             new_value = std::stoi(value.get());
@@ -2954,10 +2962,10 @@ ConfigurationStatus ChargePointConfiguration::setCustomKey(CiString<50> key, CiS
 
         // validate the updated key against the schema
         Schemas schema(custom_schema);
-        json model;
-        model[key] = new_value;
-        schema.get_validator()->validate(model); // throws exception on error
-        config["Custom"][key] = new_value;
+        json modelUnderTest=config[customObject];
+        modelUnderTest[key] = new_value;
+        schema.get_validator()->validate(modelUnderTest); // throws exception on error
+        config[customObject][key] = new_value;
     } catch (const std::exception& e) {
         EVLOG_warning << "Could not set custom configuration key: " << e.what();
         return ConfigurationStatus::Rejected;
@@ -3284,7 +3292,7 @@ std::optional<KeyValue> ChargePointConfiguration::get(CiString<50> key) {
         return this->getCustomDisplayCostAndPriceEnabledKeyValue();
     }
 
-    if (getCustomDisplayCostAndPriceEnabled()) {
+    if (getCustomDisplayCostAndPriceEnabled() or true) {
         if (key == "NumberOfDecimalsForCostValues") {
             return this->getPriceNumberOfDecimalsForCostValuesKeyValue();
         }
@@ -3876,12 +3884,17 @@ ConfigurationStatus ChargePointConfiguration::set(CiString<50> key, CiString<500
         this->setCustomIdleFeeAfterStop(ocpp::conversions::string_to_bool(value));
     }
 
+    if (key == "CustomDisplayCostAndPrice") {
+        this->setCustomDisplayCostAndPrice(ocpp::conversions::string_to_bool(value));
+    }
+
     if (key == "Language") {
         this->setLanguage(value);
     }
 
     if (this->config.contains("Custom") and this->config["Custom"].contains(key.get())) {
-        return this->setCustomKey(key, value, false);
+    	EVLOG_info << "set retrieving key: " << key.get();
+    	return this->setCustomKey(key, value, false);
     }
 
     return ConfigurationStatus::Accepted;

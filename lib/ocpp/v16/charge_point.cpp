@@ -183,6 +183,11 @@ ChangeAvailabilityResponse ChargePoint::on_change_availability(const ChangeAvail
     return this->charge_point->on_change_availability(request);
 }
 
+void ChargePoint::deregister_data_transfer_callback(
+    const CiString<255>& vendorId, const CiString<50>& messageId){
+	this->charge_point->deregister_data_transfer_callback(vendorId, messageId);
+}
+
 void ChargePoint::register_data_transfer_callback(
     const CiString<255>& vendorId, const CiString<50>& messageId,
     const std::function<DataTransferResponse(const std::optional<std::string>& msg)>& callback) {

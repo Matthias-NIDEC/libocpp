@@ -364,6 +364,8 @@ public:
     /// Callbacks
     /// @{
 
+    void deregister_data_transfer_callback(
+        const CiString<255>& vendorId, const CiString<50>& messageId);
     /// registers a \p callback function that can be used to receive a arbitrary data transfer for the given \p
     /// vendorId and \p messageId
     /// \param vendorId
