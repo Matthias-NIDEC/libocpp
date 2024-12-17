@@ -447,6 +447,7 @@ EnhancedChargingSchedule calculate_composite_schedule(std::vector<period_entry_t
             // there is a schedule to use
             const auto [limit, number_phases] =
                 convert_limit(chosen, selected_unit, default_number_phases, supply_voltage);
+
             if (selected_unit != chosen->charging_rate_unit) {
             	composite.profileTransformed=true;
             }
@@ -479,7 +480,7 @@ EnhancedChargingSchedule calculate_composite_schedule(const EnhancedChargingSche
     if (tx.minChargingRate) {
         combined.minChargingRate = tx.minChargingRate.value();
     }
-
+    ChargingProfilePurposeType actingPurpose;
     const auto default_limit = (tx_default.chargingRateUnit == ChargingRateUnit::A)
                                    ? static_cast<float>(default_limits.amps)
                                    : static_cast<float>(default_limits.watts);
@@ -514,6 +515,7 @@ EnhancedChargingSchedule calculate_composite_schedule(const EnhancedChargingSche
         // use TxProfile when there is one
         if (period_tx.startPeriod != -1) {
             period = period_tx;
+            actingPurpose=ChargingProfilePurposeType::TxProfile;
         }
 
         if (period_tx_default.startPeriod != -1) {
@@ -521,6 +523,7 @@ EnhancedChargingSchedule calculate_composite_schedule(const EnhancedChargingSche
             // use TxDefaultProfile when a TxProfile doesn't exist
             if ((period.limit == no_limit_specified) && (period_tx_default.limit != no_limit_specified)) {
                 period = period_tx_default;
+                actingPurpose=ChargingProfilePurposeType::TxDefaultProfile;
             }
         }
 
@@ -531,6 +534,7 @@ EnhancedChargingSchedule calculate_composite_schedule(const EnhancedChargingSche
                 // use ChargePointMaxProfile when TxProfile and TxDefaultProfile don't exist
                 if (period_charge_point_max.limit != no_limit_specified) {
                     period = period_charge_point_max;
+                    actingPurpose=ChargingProfilePurposeType::ChargePointMaxProfile;
                 }
             } else {
                 // apply ChargePointMaxProfile limits
@@ -548,6 +552,7 @@ EnhancedChargingSchedule calculate_composite_schedule(const EnhancedChargingSche
                         if (period_charge_point_max.limit < period.limit) {
                             // apply lower limit
                             period.limit = period_charge_point_max.limit;
+                            actingPurpose=ChargingProfilePurposeType::ChargePointMaxProfile;
                         }
                     } else {
                         // limit is total allowed power, changes in number of phases matter
@@ -560,6 +565,9 @@ EnhancedChargingSchedule calculate_composite_schedule(const EnhancedChargingSche
                         // avoid fractional results - 1 decimal place is allowed but tricky to ensure with a float
                         period.limit = std::floor(std::min(charge_point_limit_per_phase, period_limit_per_phase) *
                                                   period.numberPhases.value());
+                        if (charge_point_limit_per_phase > period_limit_per_phase) {
+                        	actingPurpose=ChargingProfilePurposeType::ChargePointMaxProfile;
+                        }
                     }
                 }
             }
@@ -593,6 +601,10 @@ EnhancedChargingSchedule calculate_composite_schedule(const EnhancedChargingSche
         }
     }
 
+    if ( charge_point_max.profileTransformed or tx_default.profileTransformed or tx.profileTransformed){
+    	combined.profileTransformed=true;
+    }
+    //the actingPurpose can be used, to take the selected profile (actingPurpose as determinator) for the profileTransform variable
     return combined;
 }
 
