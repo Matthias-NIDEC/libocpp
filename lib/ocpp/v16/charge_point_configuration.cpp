@@ -2694,15 +2694,16 @@ std::optional<std::string> ChargePointConfiguration::getDefaultPrice() {
 ConfigurationStatus ChargePointConfiguration::setDefaultPrice(const std::string& value) {
 
     json default_price = json::object();
+
     try {
-        default_price = json::parse(value);
+        //default_price = json::parse(value);
     } catch (const std::exception& e) {
         EVLOG_error << "Default price json not correct, can not store default price : " << e.what();
         return ConfigurationStatus::Rejected;
     }
 
-    this->config["CostAndPrice"]["DefaultPrice"] = default_price;
-    this->setInUserConfig("CostAndPrice", "DefaultPrice", default_price);
+    this->config["CostAndPrice"]["DefaultPrice"] = value;
+    this->setInUserConfig("CostAndPrice", "DefaultPrice", value);
 
     return ConfigurationStatus::Accepted;
 }
@@ -2816,10 +2817,8 @@ std::optional<KeyValue> ChargePointConfiguration::getTimeOffsetNextTransitionKey
 
 std::optional<bool> ChargePointConfiguration::getCustomIdleFeeAfterStop() {
     if (this->config.contains("CostAndPrice") and this->config["CostAndPrice"].contains("CustomIdleFeeAfterStop")) {
-    	EVLOG_info << "retrieving key: CustomIdleFeeAfterStop present";
     	return this->config["CostAndPrice"]["CustomIdleFeeAfterStop"];
     }
-    EVLOG_info << "retrieving key: not possible CustomIdleFeeAfterStop present";
     return std::nullopt;
 }
 
